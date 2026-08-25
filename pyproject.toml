@@ -3,7 +3,10 @@ name = "openai-oci-agent-reference"
 version = "0.1.0"
 description = "Testable reference architecture for OCI workload identity, federation, agent execution, and server-side tool authorization"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "oci>=2.184,<3",
+    "requests>=2.32,<3",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<9", "ruff>=0.8,<1"]
