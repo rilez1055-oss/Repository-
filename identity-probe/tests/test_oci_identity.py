@@ -1,6 +1,8 @@
+import base64
 import json
 
 import pytest
+import requests
 
 from oci_identity import (
     ProbeError,
@@ -10,8 +12,6 @@ from oci_identity import (
 
 
 def test_decode_jwt_payload_without_logging_or_verification():
-    import base64
-
     payload = {"iss": "https://identity.oraclecloud.com/", "exp": 2000}
     encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b"=").decode()
     token = f"header.{encoded}.signature"
@@ -52,9 +52,9 @@ def test_metadata_uses_imdsv2(monkeypatch):
 
 def test_metadata_failure_is_fail_closed(monkeypatch):
     def fake_get(*args, **kwargs):
-        raise RuntimeError("unexpected")
+        raise requests.RequestException("metadata unavailable")
 
     monkeypatch.setattr("oci_identity.requests.get", fake_get)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ProbeError, match="metadata unavailable"):
         get_instance_metadata()
