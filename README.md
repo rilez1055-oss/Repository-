@@ -18,22 +18,38 @@ Every privileged operation is authorized again at the point where it executes.
 
 ## Implementation gates
 
-1. Repository and governance policy
-2. OCI identity probe
-3. Oracle JWT inspection
-4. Workload-identity federation configuration
-5. Negative federation tests
-6. Dedicated OpenAI service-account authorization
-7. Minimal Responses API call
-8. MCP authorization layer
-9. MCP tools
-10. MCP App rendering
-11. Workspace Agent trigger
-12. End-to-end validation
+| Gate | Stage | Status |
+|---|---|---|
+| 1 | OCI identity acquisition | **Implemented; live OCI evidence pending** |
+| 2 | Oracle JWT inspection | **Implemented; live OCI evidence pending** |
+| 3 | Workload-identity federation configuration | Pending |
+| 4 | Negative federation tests | Pending live provider test |
+| 5 | Dedicated OpenAI service-account authorization | Pending |
+| 6 | Minimal Responses API call | Pending |
+| 7 | MCP authorization layer | Pending |
+| 8 | MCP tools | Pending |
+| 9 | MCP App rendering | Pending |
+| 10 | Workspace Agent trigger | Pending |
+| 11 | End-to-end validation | Pending |
+
+The numbering above is intentionally shorter than the original planning list: the first live boundary is now represented by executable Gate 1/2 code, while provider configuration remains a separate later gate.
 
 ## Gate philosophy
 
 A gate is complete only when there is concrete evidence. An HTTP 200 alone does not establish identity correctness. Federation must also reject intentionally invalid claims such as an incorrect audience, expired token, missing required claim, or unauthorized workload identity.
+
+## Gate 1 / Gate 2 quick start
+
+On an OCI Compute instance configured for Instance Principals:
+
+```bash
+export OCI_IDENTITY_DOMAIN_URL="https://<your-identity-domain>"
+python identity-probe/src/run_probe.py
+```
+
+The command prints only redacted identifiers and non-secret claim metadata. It never prints or persists the Oracle access token.
+
+See [`docs/identity.md`](docs/identity.md) for the exact gate criteria.
 
 ## Repository layout
 
@@ -47,7 +63,9 @@ openai-oci-agent-reference/
 ├── identity-probe/
 │   ├── AGENTS.md
 │   ├── src/identity_probe.py
-│   └── tests/test_identity_probe.py
+│   ├── src/oci_identity.py
+│   ├── src/run_probe.py
+│   └── tests/
 ├── federation/
 │   ├── AGENTS.md
 │   ├── config/
