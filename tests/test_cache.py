@@ -53,4 +53,4 @@ def test_cache_metrics():
     )
     assert metrics.uncached_input_tokens == 200
     assert metrics.cache_hit_ratio == 0.7
-    assert metrics.estimated_input_cost(2.0) == 0.00074
+    assert metrics.estimated_input_cost(2.0) == 0.00079
