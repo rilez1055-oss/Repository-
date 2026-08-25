@@ -20,25 +20,24 @@ Every privileged operation is authorized again at the point where it executes.
 
 | Gate | Stage | Status |
 |---|---|---|
-| 1 | OCI identity acquisition | **Implemented; live OCI evidence pending** |
-| 2 | Oracle JWT inspection | **Implemented; live OCI evidence pending** |
-| 3 | Workload-identity federation configuration | Pending |
-| 4 | Negative federation tests | Pending live provider test |
-| 5 | Dedicated OpenAI service-account authorization | Pending |
-| 6 | Minimal Responses API call | Pending |
-| 7 | MCP authorization layer | Pending |
-| 8 | MCP tools | Pending |
-| 9 | MCP App rendering | Pending |
-| 10 | Workspace Agent trigger | Pending |
-| 11 | End-to-end validation | Pending |
-
-The numbering above is intentionally shorter than the original planning list: the first live boundary is now represented by executable Gate 1/2 code, while provider configuration remains a separate later gate.
+| 1 | Repository + governance policy | Complete |
+| 2 | OCI identity acquisition | **Implemented; live OCI evidence pending** |
+| 3 | Oracle JWT inspection | **Implemented; live OCI evidence pending** |
+| 4 | Workload-identity federation configuration | Pending |
+| 5 | Negative federation tests | Pending live provider test |
+| 6 | Dedicated OpenAI service-account authorization | Pending |
+| 7 | Minimal Responses API call | Pending |
+| 8 | MCP authorization layer | Pending |
+| 9 | MCP tools | Pending |
+| 10 | MCP App rendering | Pending |
+| 11 | Workspace Agent trigger | Pending |
+| 12 | End-to-end validation | Pending |
 
 ## Gate philosophy
 
 A gate is complete only when there is concrete evidence. An HTTP 200 alone does not establish identity correctness. Federation must also reject intentionally invalid claims such as an incorrect audience, expired token, missing required claim, or unauthorized workload identity.
 
-## Gate 1 / Gate 2 quick start
+## Gate 2 / Gate 3 quick start
 
 On an OCI Compute instance configured for Instance Principals:
 
