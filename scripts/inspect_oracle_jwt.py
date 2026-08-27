@@ -8,6 +8,8 @@ The token is read from stdin and is never echoed. This tool is diagnostic only;
 its output is not evidence that the token is authentic or trusted.
 """
 
+from __future__ import annotations
+
 import base64
 import json
 import sys
@@ -30,19 +32,16 @@ def decode_part(value: str) -> Any:
     return json.loads(base64.urlsafe_b64decode(padded.encode("ascii")))
 
 
-def main() -> int:
-    token = sys.stdin.read().strip()
-    if not token:
-        raise SystemExit("No token supplied on stdin")
-
+def inspect_token(token: str) -> None:
+    """Print only safe structural metadata for a token held in memory."""
     parts = token.split(".")
     if len(parts) != 3:
-        raise SystemExit("Input is not a compact JWT")
+        raise ValueError("Input is not a compact JWT")
 
     header = decode_part(parts[0])
     payload = decode_part(parts[1])
     if not isinstance(header, dict) or not isinstance(payload, dict):
-        raise SystemExit("JWT header/payload are not JSON objects")
+        raise ValueError("JWT header/payload are not JSON objects")
 
     print("JWT structural decode: OK")
     print("Signature verification: NOT PERFORMED")
@@ -60,6 +59,13 @@ def main() -> int:
         print("  aud cardinality: 1")
 
     print("Token value: NOT PRINTED")
+
+
+def main() -> int:
+    token = sys.stdin.read().strip()
+    if not token:
+        raise SystemExit("No token supplied on stdin")
+    inspect_token(token)
     return 0
 
 
@@ -67,5 +73,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        print(f"JWT inspection failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        print(f"JWT inspection failed: {type(exc).__name__}", file=sys.stderr)
         raise SystemExit(1)
