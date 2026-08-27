@@ -7,7 +7,7 @@ A security-first reference implementation for an OCI workload identity → Oracl
 | Gate | Boundary | State |
 |---|---|---|
 | 1 | OCI metadata / instance identity | 🟡 runtime evidence required |
-| 2 | JWT structural / claim validation | 🟢 local test substrate |
+| 2 | JWT claim validation | 🟡 runtime/cryptographic evidence required; local inspector is non-verifying |
 | **3** | **OCI Instance Principal → Oracle Identity Domain token** | **🟡 ACTIVE — requires OCI runtime evidence** |
 | 4 | Oracle token → OpenAI WIF | ⏳ |
 | 5 | WIF → dedicated service-account authorization | ⏳ |
@@ -22,7 +22,7 @@ A security-first reference implementation for an OCI workload identity → Oracl
 
 ## Gate 3
 
-Run `scripts/gate3_token_exchange.py` **inside the OCI Compute workload**. It requires `OCI_IDENTITY_DOMAIN_URL` and an OCI Instance Principal.
+Run `scripts/gate3_token_exchange.py` **inside the OCI Compute workload**. It requires `OCI_IDENTITY_DOMAIN_URL` and an OCI Instance Principal. `OCI_IDENTITY_DOMAIN_SCOPE` is optional and defaults to `urn:opc:idm:__myscopes__`; set it when the Identity Domain configuration requires a different scope.
 
 Success output is intentionally limited to:
 
@@ -32,9 +32,15 @@ Token length: <number>
 Token persisted: NO
 ```
 
-Never print the JWT, bearer token, authorization headers, cookies, signer material, or the complete HTTP response.
+Never print the JWT, bearer token, authorization headers, cookies, signer material, or the complete HTTP response. The token is held only in process memory.
 
-The script does not persist the token. The token remains process-local and is discarded when the process exits.
+For the next diagnostic step, run the exchange and claim inspection in one process:
+
+```bash
+python scripts/gate3_token_exchange.py --inspect-claims
+```
+
+This avoids the unsafe pattern of echoing a live bearer token merely to pipe it into another process.
 
 ### Failure classification
 
@@ -46,9 +52,9 @@ The script does not persist the token. The token remains process-local and is di
 
 ## Claim inspection
 
-After Gate 3 passes, pipe the freshly acquired token directly into `scripts/inspect_oracle_jwt.py`. The inspector performs **local, non-verifying JWT payload decoding** only. Decoding is not signature verification and is never treated as proof of trust.
+`scripts/inspect_oracle_jwt.py` performs **local, non-verifying JWT payload decoding** only. Decoding is not signature verification and is never treated as proof of trust. The inspector prints claim presence/type and selected safe structural metadata; it never prints the token.
 
-The inspector prints claim presence/type and selected safe structural metadata by default. It does not print the token.
+A structural decode is therefore diagnostic evidence, not Gate 2 cryptographic validation evidence.
 
 ## Trust plane vs performance plane
 
@@ -101,7 +107,11 @@ prompt cache
 
 Dynamic data stays outside the stable prefix whenever possible: request-specific authorization context, current resources, timestamps, transient tool results, and user input.
 
-The repository includes pure caching utilities and tests, but does **not** enable live OpenAI calls or WIF integration before Gate 3 evidence exists.
+The repository contains pure caching utilities and tests, but does **not** enable live OpenAI calls or WIF integration before Gate 3 evidence exists.
+
+### Current GPT-5.6 cache contract
+
+The current API reference documents `prompt_cache_key` and `prompt_cache_options` for GPT-5.6+, with `mode: "explicit"` disabling the implicit breakpoint, `ttl: "30m"` as the currently supported TTL, up to four explicit writes per request, and matching against up to 80 recent breakpoints. The cache key is limited to 64 characters. These are implementation details, not security controls.
 
 ## Skills security
 
@@ -128,8 +138,8 @@ Never record JWTs, authorization headers, prompt contents, customer records, raw
 
 ## Current OpenAI implementation posture
 
-The eventual API integration should use the Responses API. Current OpenAI documentation supports GPT-5.6-family Responses workflows, prompt-cache keys/options, explicit cache breakpoints, and versioned hosted Skills. Implementation details should be re-verified against the current API reference when Gate 6 is opened.
+The eventual API integration should use the Responses API. Current OpenAI documentation supports GPT-5.6-family Responses workflows, prompt-cache keys/options, explicit cache breakpoints, and versioned hosted Skills. Implementation details should be re-verified against the current API reference when Gate 4/6 opens.
 
 ## Repository status
 
-This branch intentionally contains the offline/testable foundation and Gate 3 acceptance tooling. It does not claim live OCI, WIF, Responses, MCP, or Skills execution.
+This branch contains the offline/testable foundation and Gate 3 acceptance tooling. It does not claim live OCI, WIF, Responses, MCP, or Skills execution. Gate 3 remains blocked on OCI runtime evidence.
