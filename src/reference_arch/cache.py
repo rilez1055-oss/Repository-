@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 
+MAX_PROMPT_CACHE_KEY_LENGTH = 64
+
+
 @dataclass(frozen=True)
 class CacheMetrics:
     input_tokens: int
@@ -20,12 +23,19 @@ class CacheMetrics:
     cache_write_tokens: int
     latency_ms: float | None = None
 
+    def __post_init__(self) -> None:
+        for name in ("input_tokens", "cached_tokens", "cache_write_tokens"):
+            value = getattr(self, name)
+            if value < 0:
+                raise ValueError(f"{name} must be non-negative")
+        if self.cached_tokens + self.cache_write_tokens > self.input_tokens:
+            raise ValueError(
+                "cached_tokens + cache_write_tokens cannot exceed input_tokens"
+            )
+
     @property
     def uncached_input_tokens(self) -> int:
-        return max(
-            0,
-            self.input_tokens - self.cached_tokens - self.cache_write_tokens,
-        )
+        return self.input_tokens - self.cached_tokens - self.cache_write_tokens
 
     @property
     def cache_hit_ratio(self) -> float:
@@ -39,6 +49,8 @@ class CacheMetrics:
         cache_read_multiplier: float = 0.1,
         cache_write_multiplier: float = 1.25,
     ) -> float:
+        if input_price_per_million < 0:
+            raise ValueError("input_price_per_million must be non-negative")
         weighted = (
             self.uncached_input_tokens
             + self.cached_tokens * cache_read_multiplier
@@ -74,7 +86,13 @@ def build_cache_key(
 ) -> str:
     if shard < 0:
         raise ValueError("shard must be non-negative")
-    return f"{agent_version}:{policy_version}:{tenant_class}:shard-{shard:02d}"
+    parts = (agent_version, policy_version, tenant_class)
+    if any(not part or ":" in part for part in parts):
+        raise ValueError("cache-key components must be non-empty and contain no ':'")
+    key = f"{agent_version}:{policy_version}:{tenant_class}:shard-{shard:02d}"
+    if len(key) > MAX_PROMPT_CACHE_KEY_LENGTH:
+        raise ValueError("prompt_cache_key exceeds the 64-character API limit")
+    return key
 
 
 def build_stable_prefix(
@@ -94,9 +112,14 @@ def build_stable_prefix(
 
 
 def explicit_breakpoint_content(text: str) -> dict[str, Any]:
-    """Return the Responses input_text shape for an explicit cache breakpoint."""
+    """Return a Responses input-text content block with an explicit breakpoint."""
     return {
         "type": "input_text",
         "text": text,
         "prompt_cache_breakpoint": {"mode": "explicit"},
     }
+
+
+def explicit_cache_options() -> dict[str, str]:
+    """Return the current GPT-5.6 explicit prompt-cache request options."""
+    return {"mode": "explicit", "ttl": "30m"}
